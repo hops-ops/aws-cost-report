@@ -1,0 +1,24 @@
+# code: language=yaml
+#
+# Athena Workgroup for querying CUR data
+#
+
+---
+apiVersion: athena.aws.m.upbound.io/v1beta1
+kind: Workgroup
+metadata:
+  name: {{ $state.resourceNames.workgroup }}
+  annotations:
+    {{ setResourceNameAnnotation "workgroup" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.region }}
+    configuration:
+      resultConfiguration:
+        outputLocation: s3://{{ $state.bucketName }}/athena-results/
+    tags: {{ merge (dict "Name" $state.resourceNames.workgroup) $state.tags | toJson }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRef.name }}
+    kind: {{ $state.providerConfigRef.kind }}

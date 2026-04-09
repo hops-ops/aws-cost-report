@@ -1,0 +1,60 @@
+# code: language=yaml
+#
+# CUR Report Definition
+# NOTE: CUR API is only available in us-east-1. The region is hardcoded.
+#
+
+---
+apiVersion: cur.aws.m.upbound.io/v1beta1
+kind: ReportDefinition
+metadata:
+  name: {{ $state.resourceNames.report }}
+  annotations:
+    {{ setResourceNameAnnotation "report-definition" }}
+    crossplane.io/external-name: {{ $state.reportName }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    timeUnit: DAILY
+    format: Parquet
+    compression: Parquet
+    additionalSchemaElements:
+    - RESOURCES
+    additionalArtifacts:
+    - ATHENA
+    refreshClosedReports: true
+    reportVersioning: OVERWRITE_REPORT
+    s3Bucket: {{ $state.bucketName }}
+    s3Prefix: cur
+    s3Region: {{ $state.region }}
+    tags: {{ merge (dict "Name" $state.resourceNames.report) $state.tags | toJson }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRef.name }}
+    kind: {{ $state.providerConfigRef.kind }}
+
+# ==============================================================================
+# Usage: Delete report before bucket
+# ==============================================================================
+{{- if and $state.observed.bucket.ready $state.observed.report.ready }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-report-before-bucket
+  annotations:
+    {{ setResourceNameAnnotation "usage-delete-report-before-bucket" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: s3.aws.m.upbound.io/v1beta1
+    kind: Bucket
+    resourceRef:
+      name: {{ $state.resourceNames.bucket }}
+  by:
+    apiVersion: cur.aws.m.upbound.io/v1beta1
+    kind: ReportDefinition
+    resourceRef:
+      name: {{ $state.resourceNames.report }}
+{{- end }}

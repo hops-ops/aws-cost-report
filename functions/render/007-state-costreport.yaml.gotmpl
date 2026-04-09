@@ -1,0 +1,14 @@
+# code: language=yaml
+#
+# Compute derived resource names
+#
+
+{{- $state = set $state "resourceNames" (dict
+  "bucket" (printf "%s-cur" $state.name)
+  "report" (printf "%s-cur-report" $state.name)
+  "crawlerRole" (printf "%s-cur-crawler" $state.name)
+  "crawlerPolicy" (printf "%s-cur-crawler" $state.name)
+  "database" (printf "%s-cur-db" $state.name)
+  "crawler" (printf "%s-cur-crawler" $state.name)
+  "workgroup" (printf "%s-cur-workgroup" $state.name)
+) }}

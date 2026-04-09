@@ -1,0 +1,139 @@
+# code: language=yaml
+#
+# IAM Role and Policy for Glue Crawler
+#
+
+---
+apiVersion: iam.aws.m.upbound.io/v1beta1
+kind: Role
+metadata:
+  name: {{ $state.resourceNames.crawlerRole }}
+  annotations:
+    {{ setResourceNameAnnotation "crawler-role" }}
+    {{- if $state.crawlerRole.externalName }}
+    crossplane.io/external-name: {{ $state.crawlerRole.externalName }}
+    {{- end }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    assumeRolePolicy: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Effect": "Allow",
+            "Principal": {"Service": "glue.amazonaws.com"},
+            "Action": "sts:AssumeRole"
+          }
+        ]
+      }
+    tags: {{ merge (dict "Name" $state.resourceNames.crawlerRole) $state.tags | toJson }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRef.name }}
+    kind: {{ $state.providerConfigRef.kind }}
+
+---
+apiVersion: iam.aws.m.upbound.io/v1beta1
+kind: Policy
+metadata:
+  name: {{ $state.resourceNames.crawlerPolicy }}
+  annotations:
+    {{ setResourceNameAnnotation "crawler-policy" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    policy: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "S3Access",
+            "Effect": "Allow",
+            "Action": ["s3:GetObject", "s3:ListBucket"],
+            "Resource": [
+              "arn:aws:s3:::{{ $state.bucketName }}",
+              "arn:aws:s3:::{{ $state.bucketName }}/*"
+            ]
+          },
+          {
+            "Sid": "GlueAccess",
+            "Effect": "Allow",
+            "Action": [
+              "glue:GetDatabase",
+              "glue:GetTable",
+              "glue:CreateTable",
+              "glue:UpdateTable",
+              "glue:GetPartition",
+              "glue:BatchCreatePartition",
+              "glue:BatchGetPartition",
+              "glue:BatchUpdatePartition"
+            ],
+            "Resource": [
+              "arn:aws:glue:{{ $state.region }}:{{ $state.accountId }}:catalog",
+              "arn:aws:glue:{{ $state.region }}:{{ $state.accountId }}:database/{{ $state.databaseName }}",
+              "arn:aws:glue:{{ $state.region }}:{{ $state.accountId }}:table/{{ $state.databaseName }}/*"
+            ]
+          },
+          {
+            "Sid": "CloudWatchLogs",
+            "Effect": "Allow",
+            "Action": [
+              "logs:CreateLogGroup",
+              "logs:CreateLogStream",
+              "logs:PutLogEvents"
+            ],
+            "Resource": "arn:aws:logs:{{ $state.region }}:{{ $state.accountId }}:log-group:/aws-glue/crawlers:*"
+          }
+        ]
+      }
+    tags: {{ merge (dict "Name" $state.resourceNames.crawlerPolicy) $state.tags | toJson }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRef.name }}
+    kind: {{ $state.providerConfigRef.kind }}
+
+---
+apiVersion: iam.aws.m.upbound.io/v1beta1
+kind: RolePolicyAttachment
+metadata:
+  name: {{ $state.resourceNames.crawlerRole }}
+  annotations:
+    {{ setResourceNameAnnotation "crawler-role-policy-attachment" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    roleRef:
+      name: {{ $state.resourceNames.crawlerRole }}
+    policyArnRef:
+      name: {{ $state.resourceNames.crawlerPolicy }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRef.name }}
+    kind: {{ $state.providerConfigRef.kind }}
+
+# ==============================================================================
+# Usage: Delete attachment before role and policy
+# ==============================================================================
+{{- if $state.observed.crawlerRole.ready }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-attachment-before-role
+  annotations:
+    {{ setResourceNameAnnotation "usage-delete-attachment-before-role" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: iam.aws.m.upbound.io/v1beta1
+    kind: Role
+    resourceRef:
+      name: {{ $state.resourceNames.crawlerRole }}
+  by:
+    apiVersion: iam.aws.m.upbound.io/v1beta1
+    kind: RolePolicyAttachment
+    resourceRef:
+      name: {{ $state.resourceNames.crawlerRole }}
+{{- end }}

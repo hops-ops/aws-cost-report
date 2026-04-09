@@ -1,0 +1,14 @@
+apiVersion: aws.hops.ops.com.ai/v1alpha1
+kind: CostReport
+metadata:
+  name: prod-billing
+  namespace: default
+spec:
+  accountId: "123456789012"
+  region: us-east-2
+  bucketName: my-org-cur-data
+  reportName: my_org_daily_cur
+  databaseName: my_org_billing
+  tags:
+    environment: production
+    team: platform

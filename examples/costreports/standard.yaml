@@ -1,0 +1,8 @@
+apiVersion: aws.hops.ops.com.ai/v1alpha1
+kind: CostReport
+metadata:
+  name: my-account
+  namespace: default
+spec:
+  accountId: "123456789012"
+  region: us-east-2

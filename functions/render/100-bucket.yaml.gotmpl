@@ -1,0 +1,123 @@
+# code: language=yaml
+#
+# S3 Bucket for CUR data and Athena query results
+#
+
+---
+apiVersion: s3.aws.m.upbound.io/v1beta1
+kind: Bucket
+metadata:
+  name: {{ $state.resourceNames.bucket }}
+  annotations:
+    {{ setResourceNameAnnotation "cur-bucket" }}
+    crossplane.io/external-name: {{ $state.bucket.externalName | default $state.bucketName }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.region }}
+    tags: {{ merge (dict "Name" $state.resourceNames.bucket) $state.tags | toJson }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRef.name }}
+    kind: {{ $state.providerConfigRef.kind }}
+
+# ==============================================================================
+# Enforce bucket ownership (no ACLs needed for CUR)
+# ==============================================================================
+---
+apiVersion: s3.aws.m.upbound.io/v1beta1
+kind: BucketOwnershipControls
+metadata:
+  name: {{ $state.resourceNames.bucket }}
+  annotations:
+    {{ setResourceNameAnnotation "bucket-ownership-controls" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.region }}
+    bucketRef:
+      name: {{ $state.resourceNames.bucket }}
+    rule:
+      objectOwnership: BucketOwnerEnforced
+  providerConfigRef:
+    name: {{ $state.providerConfigRef.name }}
+    kind: {{ $state.providerConfigRef.kind }}
+
+# ==============================================================================
+# Block all public access
+# ==============================================================================
+---
+apiVersion: s3.aws.m.upbound.io/v1beta1
+kind: BucketPublicAccessBlock
+metadata:
+  name: {{ $state.resourceNames.bucket }}
+  annotations:
+    {{ setResourceNameAnnotation "bucket-public-access-block" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.region }}
+    bucketRef:
+      name: {{ $state.resourceNames.bucket }}
+    blockPublicAcls: true
+    blockPublicPolicy: true
+    ignorePublicAcls: true
+    restrictPublicBuckets: true
+  providerConfigRef:
+    name: {{ $state.providerConfigRef.name }}
+    kind: {{ $state.providerConfigRef.kind }}
+
+# ==============================================================================
+# Bucket policy: allow CUR billing service to write
+# ==============================================================================
+---
+apiVersion: s3.aws.m.upbound.io/v1beta1
+kind: BucketPolicy
+metadata:
+  name: {{ $state.resourceNames.bucket }}
+  annotations:
+    {{ setResourceNameAnnotation "bucket-policy" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.region }}
+    bucketRef:
+      name: {{ $state.resourceNames.bucket }}
+    policy: |
+      {
+        "Version": "2012-10-17",
+        "Statement": [
+          {
+            "Sid": "AllowCURServiceRead",
+            "Effect": "Allow",
+            "Principal": {"Service": "billingreports.amazonaws.com"},
+            "Action": ["s3:GetBucketAcl", "s3:GetBucketPolicy"],
+            "Resource": "arn:aws:s3:::{{ $state.bucketName }}",
+            "Condition": {
+              "StringEquals": {
+                "aws:SourceArn": "arn:aws:cur:us-east-1:{{ $state.accountId }}:definition/*",
+                "aws:SourceAccount": "{{ $state.accountId }}"
+              }
+            }
+          },
+          {
+            "Sid": "AllowCURServiceWrite",
+            "Effect": "Allow",
+            "Principal": {"Service": "billingreports.amazonaws.com"},
+            "Action": "s3:PutObject",
+            "Resource": "arn:aws:s3:::{{ $state.bucketName }}/*",
+            "Condition": {
+              "StringEquals": {
+                "aws:SourceArn": "arn:aws:cur:us-east-1:{{ $state.accountId }}:definition/*",
+                "aws:SourceAccount": "{{ $state.accountId }}"
+              }
+            }
+          }
+        ]
+      }
+  providerConfigRef:
+    name: {{ $state.providerConfigRef.name }}
+    kind: {{ $state.providerConfigRef.kind }}

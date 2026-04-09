@@ -1,0 +1,22 @@
+# code: language=yaml
+#
+# Compute status from observed state
+#
+
+{{- $allReady := and
+  $state.observed.bucket.ready
+  $state.observed.report.ready
+  $state.observed.crawlerRole.ready
+  $state.observed.database.ready
+  $state.observed.crawler.ready
+  $state.observed.workgroup.ready
+}}
+
+{{- $state = set $state "status" (dict
+  "ready" $allReady
+  "bucketName" $state.bucketName
+  "bucketArn" ($state.observed.bucket.arn | default "Pending")
+  "databaseName" $state.databaseName
+  "workgroupName" $state.resourceNames.workgroup
+  "crawlerRoleArn" ($state.observed.crawlerRole.arn | default "Pending")
+) }}

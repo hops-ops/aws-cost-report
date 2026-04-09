@@ -1,0 +1,118 @@
+apiVersion: apiextensions.crossplane.io/v2
+kind: CompositeResourceDefinition
+metadata:
+  name: costreports.aws.hops.ops.com.ai
+spec:
+  group: aws.hops.ops.com.ai
+  names:
+    kind: CostReport
+    plural: costreports
+  scope: Namespaced
+  defaultCompositeDeletePolicy: Foreground
+  versions:
+  - name: v1alpha1
+    referenceable: true
+    served: true
+    schema:
+      openAPIV3Schema:
+        description: CostReport creates CUR export, Glue catalog, and Athena workgroup for cloud cost visibility via OpenCost. One per AWS account.
+        type: object
+        properties:
+          spec:
+            description: CostReportSpec defines the desired state.
+            type: object
+            properties:
+              accountId:
+                description: AWS account ID. Used for IAM policies and naming.
+                type: string
+              region:
+                description: AWS region for S3 bucket, Glue, and Athena resources.
+                type: string
+              bucketName:
+                description: S3 bucket name for CUR data. Defaults to {name}-cur.
+                type: string
+              reportName:
+                description: CUR report name. Defaults to {name}_cur (underscores required by AWS). Dashes in name are auto-converted.
+                type: string
+              databaseName:
+                description: Glue catalog database name. Defaults to {name}_cur. Dashes in name are auto-converted.
+                type: string
+              providerConfigRef:
+                description: Reference to the AWS ProviderConfig. Defaults to "default".
+                type: object
+                properties:
+                  name:
+                    description: Name of the AWS ProviderConfig.
+                    type: string
+                    default: default
+                  kind:
+                    description: Kind of the ProviderConfig. Defaults to ProviderConfig.
+                    type: string
+                    default: ProviderConfig
+              managementPolicies:
+                description: Management policies for all composed resources. Defaults to ["*"].
+                type: array
+                items:
+                  type: string
+                  enum:
+                  - "*"
+                  - Create
+                  - Observe
+                  - Update
+                  - Delete
+                  - LateInitialize
+                default:
+                - "*"
+              labels:
+                description: Custom labels applied to all Kubernetes resources. Merged with default labels.
+                type: object
+                additionalProperties:
+                  type: string
+                x-kubernetes-preserve-unknown-fields: true
+              tags:
+                description: Custom tags applied to all AWS resources. Merged with default tags.
+                type: object
+                additionalProperties:
+                  type: string
+                x-kubernetes-preserve-unknown-fields: true
+              bucket:
+                description: Import settings for the S3 bucket.
+                type: object
+                properties:
+                  externalName:
+                    description: External name for importing an existing S3 bucket.
+                    type: string
+              crawlerRole:
+                description: Import settings for the Glue crawler IAM role.
+                type: object
+                properties:
+                  externalName:
+                    description: External name for importing an existing IAM role.
+                    type: string
+            required:
+            - accountId
+            - region
+          status:
+            description: CostReportStatus defines the observed state.
+            type: object
+            properties:
+              ready:
+                description: Overall readiness.
+                type: boolean
+              bucketName:
+                description: Name of the S3 bucket receiving CUR data.
+                type: string
+              bucketArn:
+                description: ARN of the S3 bucket.
+                type: string
+              databaseName:
+                description: Glue catalog database name.
+                type: string
+              workgroupName:
+                description: Athena workgroup name.
+                type: string
+              crawlerRoleArn:
+                description: ARN of the Glue crawler IAM role.
+                type: string
+        required:
+        - spec

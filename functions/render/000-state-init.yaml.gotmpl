@@ -1,0 +1,74 @@
+# code: language=yaml
+#
+# Initialize $state with spec defaults
+#
+
+{{- $xr := getCompositeResource . }}
+{{- $spec := $xr.spec | default dict }}
+{{- $metadata := $xr.metadata | default dict }}
+
+# ==============================================================================
+# Core defaults
+# ==============================================================================
+{{- $name := $metadata.name | default "cost-report" }}
+{{- $nameUnderscored := $name | replace "-" "_" }}
+{{- $accountId := $spec.accountId }}
+{{- $managementPolicies := $spec.managementPolicies | default (list "*") }}
+
+# Provider config
+{{- $providerConfigRef := $spec.providerConfigRef | default dict }}
+{{- $providerConfigRef = dict
+  "name" ($providerConfigRef.name | default "default")
+  "kind" ($providerConfigRef.kind | default "ProviderConfig")
+}}
+
+# Labels
+{{- $defaultLabels := dict
+  "hops.ops.com.ai/managed" "true"
+  (printf "hops.ops.com.ai/%s" (lower $xr.kind)) $name
+}}
+{{- $labels := merge (dict) $defaultLabels ($spec.labels | default dict) }}
+
+# Tags
+{{- $defaultTags := dict
+  "hops.ops.com.ai/managed" "true"
+  (printf "hops.ops.com.ai/%s" (lower $xr.kind)) $name
+}}
+{{- $tags := merge (dict) $defaultTags ($spec.tags | default dict) }}
+
+# ==============================================================================
+# Effective spec
+# ==============================================================================
+{{- $bucketName := $spec.bucketName | default (printf "%s-cur" $name) }}
+{{- $reportName := $spec.reportName | default (printf "%s_cur" $nameUnderscored) }}
+{{- $databaseName := $spec.databaseName | default (printf "%s_cur" $nameUnderscored) }}
+{{- $region := $spec.region }}
+
+# Import settings
+{{- $bucket := $spec.bucket | default dict }}
+{{- $crawlerRole := $spec.crawlerRole | default dict }}
+
+# ==============================================================================
+# Initialize $state
+# ==============================================================================
+{{- $state := dict
+  "name" $name
+  "nameUnderscored" $nameUnderscored
+  "managementPolicies" $managementPolicies
+  "providerConfigRef" $providerConfigRef
+  "labels" $labels
+  "tags" $tags
+  "accountId" $accountId
+  "region" $region
+  "bucketName" $bucketName
+  "reportName" $reportName
+  "databaseName" $databaseName
+  "bucket" (dict
+    "externalName" ($bucket.externalName | default "")
+  )
+  "crawlerRole" (dict
+    "externalName" ($crawlerRole.externalName | default "")
+  )
+  "observed" (dict)
+  "status" (dict)
+}}

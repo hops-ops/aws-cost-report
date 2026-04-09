@@ -1,0 +1,23 @@
+# code: language=yaml
+#
+# Extract observed state for the S3 bucket
+#
+
+{{- $raw := $.observed.resources | default dict }}
+{{- $entry := get $raw "cur-bucket" | default dict }}
+{{- $resource := $entry.resource | default dict }}
+{{- $status := $resource.status | default dict }}
+{{- $atProvider := $status.atProvider | default dict }}
+
+# Check readiness
+{{- $ready := false }}
+{{- range ($status.conditions | default list) }}
+  {{- if and (eq .type "Ready") (eq .status "True") }}
+    {{- $ready = true }}
+  {{- end }}
+{{- end }}
+
+{{- $state = set $state "observed" (merge $state.observed (dict "bucket" (dict
+  "ready" $ready
+  "arn" ($atProvider.arn | default "")
+))) }}

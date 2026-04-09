@@ -1,0 +1,23 @@
+# code: language=yaml
+#
+# Extract observed state for the Glue crawler IAM role
+#
+
+{{- $raw := $.observed.resources | default dict }}
+{{- $entry := get $raw "crawler-role" | default dict }}
+{{- $resource := $entry.resource | default dict }}
+{{- $status := $resource.status | default dict }}
+{{- $atProvider := $status.atProvider | default dict }}
+
+# Check readiness
+{{- $ready := false }}
+{{- range ($status.conditions | default list) }}
+  {{- if and (eq .type "Ready") (eq .status "True") }}
+    {{- $ready = true }}
+  {{- end }}
+{{- end }}
+
+{{- $state = set $state "observed" (merge $state.observed (dict "crawlerRole" (dict
+  "ready" $ready
+  "arn" ($atProvider.arn | default "")
+))) }}

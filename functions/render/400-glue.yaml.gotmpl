@@ -1,0 +1,69 @@
+# code: language=yaml
+#
+# Glue Catalog Database and Crawler
+#
+
+---
+apiVersion: glue.aws.m.upbound.io/v1beta1
+kind: CatalogDatabase
+metadata:
+  name: {{ $state.resourceNames.database }}
+  annotations:
+    {{ setResourceNameAnnotation "catalog-database" }}
+    crossplane.io/external-name: {{ $state.databaseName }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    catalogId: {{ $state.accountId | quote }}
+    region: {{ $state.region }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRef.name }}
+    kind: {{ $state.providerConfigRef.kind }}
+
+---
+apiVersion: glue.aws.m.upbound.io/v1beta1
+kind: Crawler
+metadata:
+  name: {{ $state.resourceNames.crawler }}
+  annotations:
+    {{ setResourceNameAnnotation "crawler" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  managementPolicies: {{ $state.managementPolicies | toJson }}
+  forProvider:
+    region: {{ $state.region }}
+    databaseName: {{ $state.databaseName }}
+    role: {{ $state.observed.crawlerRole.arn | default (printf "arn:aws:iam::%s:role/%s" $state.accountId $state.resourceNames.crawlerRole) }}
+    s3Target:
+    - path: s3://{{ $state.bucketName }}/cur/{{ $state.reportName }}/
+    tags: {{ merge (dict "Name" $state.resourceNames.crawler) $state.tags | toJson }}
+  providerConfigRef:
+    name: {{ $state.providerConfigRef.name }}
+    kind: {{ $state.providerConfigRef.kind }}
+
+# ==============================================================================
+# Usage: Delete crawler before database
+# ==============================================================================
+{{- if and $state.observed.database.ready $state.observed.crawler.ready }}
+---
+apiVersion: protection.crossplane.io/v1beta1
+kind: Usage
+metadata:
+  name: {{ $state.name }}-delete-crawler-before-database
+  annotations:
+    {{ setResourceNameAnnotation "usage-delete-crawler-before-database" }}
+  labels: {{ $state.labels | toJson }}
+spec:
+  replayDeletion: true
+  of:
+    apiVersion: glue.aws.m.upbound.io/v1beta1
+    kind: CatalogDatabase
+    resourceRef:
+      name: {{ $state.resourceNames.database }}
+  by:
+    apiVersion: glue.aws.m.upbound.io/v1beta1
+    kind: Crawler
+    resourceRef:
+      name: {{ $state.resourceNames.crawler }}
+{{- end }}
