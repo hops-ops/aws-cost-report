@@ -1,0 +1,66 @@
+name: on-pr
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - labeled
+      - opened
+      - reopened
+      - synchronize
+    paths:
+      - '.github/workflows/on-pr.yaml'
+      - '.gitops/**'
+      - 'apis/**'
+      - 'examples/**'
+      - 'tests/**'
+      - 'functions/**'
+      - 'upbound.yaml'
+
+permissions:
+  id-token: write
+  packages: write
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  validate:
+    uses: unbounded-tech/workflows-crossplane/.github/workflows/validate.yaml@v2.20.0
+    with:
+      examples: |
+        [
+          { "example": "examples/costreports/standard.yaml" },
+          { "example": "examples/costreports/custom-names.yaml" }
+        ]
+      api_path: apis/costreports
+      error_on_missing_schemas: true
+
+  test:
+    uses: unbounded-tech/workflows-crossplane/.github/workflows/test.yaml@v2.20.0
+
+  e2e:
+    uses: unbounded-tech/workflows-crossplane/.github/workflows/e2e.yaml@v2.20.0
+    with:
+      aws: true
+      aws-use-oidc: true
+      aws-account-id: "034489662075"
+      aws-region: us-east-2
+      write-env-files: true
+      env-vars: |
+        {
+          "COST_REPORT_BUCKET_NAME": "${{ vars.COST_REPORT_BUCKET_NAME }}",
+          "COST_REPORT_REPORT_EXTERNAL_NAME": "${{ vars.COST_REPORT_REPORT_EXTERNAL_NAME }}",
+          "COST_REPORT_DATABASE_EXTERNAL_NAME": "${{ vars.COST_REPORT_DATABASE_EXTERNAL_NAME }}",
+          "COST_REPORT_CRAWLER_ROLE_EXTERNAL_NAME": "${{ vars.COST_REPORT_CRAWLER_ROLE_EXTERNAL_NAME }}"
+        }
+
+  publish:
+    needs:
+      - validate
+      - test
+    uses: unbounded-tech/workflows-crossplane/.github/workflows/publish.yaml@v2.20.0
+    secrets: inherit
+    with:
+      tag: pr-${{ github.event.pull_request.number }}-${{ github.sha }}
