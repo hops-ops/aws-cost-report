@@ -35,6 +35,7 @@ spec:
     region: {{ $state.region }}
     databaseName: {{ $state.databaseName }}
     role: {{ $state.observed.crawlerRole.arn | default (printf "arn:aws:iam::%s:role/%s" $state.accountId $state.resourceNames.crawlerRole) }}
+    schedule: {{ $state.crawler.schedule | quote }}
     s3Target:
     - path: s3://{{ $state.bucketName }}/cur/{{ $state.reportName }}/
     tags: {{ merge (dict "Name" $state.resourceNames.crawler) $state.tags | toJson }}

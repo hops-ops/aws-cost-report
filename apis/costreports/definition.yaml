@@ -89,6 +89,13 @@ spec:
                   externalName:
                     description: External name for importing an existing IAM role.
                     type: string
+              crawler:
+                description: Glue crawler behavior.
+                type: object
+                properties:
+                  schedule:
+                    description: AWS Glue crawler cron schedule in UTC. Defaults to once daily at 10:00 UTC.
+                    type: string
             required:
             - accountId
             - region
