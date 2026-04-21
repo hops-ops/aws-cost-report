@@ -6,3 +6,5 @@ metadata:
 spec:
   accountId: "123456789012"
   region: us-east-2
+  crawler:
+    schedule: "cron(0 10 * * ? *)"

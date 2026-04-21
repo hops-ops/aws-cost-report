@@ -47,6 +47,7 @@
 # Import settings
 {{- $bucket := $spec.bucket | default dict }}
 {{- $crawlerRole := $spec.crawlerRole | default dict }}
+{{- $crawler := $spec.crawler | default dict }}
 
 # ==============================================================================
 # Initialize $state
@@ -68,6 +69,9 @@
   )
   "crawlerRole" (dict
     "externalName" ($crawlerRole.externalName | default "")
+  )
+  "crawler" (dict
+    "schedule" ($crawler.schedule | default "cron(0 10 * * ? *)")
   )
   "observed" (dict)
   "status" (dict)

@@ -163,6 +163,7 @@ _items = [
                     kind = "Crawler"
                     metadata.name = "my-account-cur-crawler"
                     spec.forProvider.databaseName = "my_account_cur"
+                    spec.forProvider.schedule = "cron(0 10 * * ? *)"
                     spec.forProvider.s3Target = [
                         {path = "s3://my-account-cur/cur/my_account_cur/"}
                     ]
@@ -171,7 +172,38 @@ _items = [
         }
     }
 
-    # Test 7: Athena workgroup outputs to correct S3 location
+    # Test 7: Custom crawler schedule overrides default
+    metav1alpha1.CompositionTest {
+        metadata.name = "crawler-schedule-override"
+        spec = {
+            compositionPath = "apis/costreports/composition.yaml"
+            xrdPath = "apis/costreports/definition.yaml"
+            timeoutSeconds = 60
+            validate = False
+            xr = {
+                apiVersion = "aws.hops.ops.com.ai/v1alpha1"
+                kind = "CostReport"
+                metadata.name = "my-account"
+                spec = {
+                    accountId = "123456789012"
+                    region = "us-east-2"
+                    crawler = {
+                        schedule = "cron(15 12 * * ? *)"
+                    }
+                }
+            }
+            assertResources = [
+                {
+                    apiVersion = "glue.aws.m.upbound.io/v1beta1"
+                    kind = "Crawler"
+                    metadata.name = "my-account-cur-crawler"
+                    spec.forProvider.schedule = "cron(15 12 * * ? *)"
+                }
+            ]
+        }
+    }
+
+    # Test 8: Athena workgroup outputs to correct S3 location
     metav1alpha1.CompositionTest {
         metadata.name = "athena-workgroup-output"
         spec = {
@@ -197,7 +229,7 @@ _items = [
         }
     }
 
-    # Test 8: Custom tags are merged with defaults
+    # Test 9: Custom tags are merged with defaults
     metav1alpha1.CompositionTest {
         metadata.name = "custom-tags-merged"
         spec = {
@@ -233,7 +265,7 @@ _items = [
         }
     }
 
-    # Test 9: Crawler IAM role has correct trust policy
+    # Test 10: Crawler IAM role has correct trust policy
     metav1alpha1.CompositionTest {
         metadata.name = "crawler-role-trust-policy"
         spec = {
